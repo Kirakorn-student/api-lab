@@ -1,104 +1,243 @@
-# API lab results
+# สรุปผลการทดสอบ API Lab
 
-Live observations below were collected from QuickPizza on 10 November 2026. Values that can change on the shared demo service are recorded as observations from that run.
+เอกสารนี้รวบรวมผลจากการทดลองเรียกใช้ QuickPizza API จริงเมื่อวันที่ **10 พฤศจิกายน 2026** ค่าบางอย่างอาจเปลี่ยนแปลงได้ เพราะเป็น API สาธารณะที่มีผู้ใช้งานร่วมกัน
 
-## Part 0
+## Part 0 — ทดลองใช้งาน API เบื้องต้น
 
-- Step 0.1, number of pizza names: **18** (GET /api/names returned HTTP 200).
-- Step 0.3, status code of the request without a token: **401** (body: `{"error":"authentication failed"}`).
-- Step 0.4, name of the vegetarian pizza: **An Empty Calzone** (observed in this run; QuickPizza selects the pizza randomly).
-- Step 0.12, results of the three runs without a session (optional): **Not performed.** This experiment is optional in the lab.
-- Step 0.16, blocks of "how many of the three tools are excluded":
-  - 0 tools excluded: `[]`
-  - 1 tool excluded: `["Knife"]` or `["Scissors"]`
-  - 2 tools excluded: `["Knife", "Scissors"]`
-  - 3 tools excluded: `["Knife", "Pizza cutter", "Scissors"]`
-  - The 0-, 1- and 2-tool blocks returned HTTP 200 and did not use an excluded tool. The 3-tool block is the known defect described below.
+### Step 0.1 — ตรวจสอบรายชื่อ Pizza
 
-## Defect report
+- เรียก GET /api/names สำเร็จ โดย API ตอบกลับ HTTP 200
+- พบรายชื่อ Pizza ทั้งหมด **18 รายการ** ในวันที่ทดสอบ
 
-- **Title:** Excluding all available pizza-cutting tools returns HTTP 500 with an empty response body.
-- **Request:**
-  - Method: `POST`
-  - Path: `/api/pizza`
-  - Header: Authorization token belonging to a test user created by the test fixture
-  - JSON body:
-    ```json
-    {
-      "excludedTools": ["Knife", "Pizza cutter", "Scissors"]
-    }
-    ```
-- **Expected result:** HTTP 400 with a JSON error message explaining that no pizza can satisfy the request.
-- **Actual result:** HTTP 500 with an empty response body. The dedicated regression test is retained as xfailed, as instructed by Step 0.16.
-- **Severity:** **Medium.** A validly formed request with impossible constraints is a client-side input problem. Returning an empty HTTP 500 makes the failure look like an unexpected server crash and gives the calling application no useful error to display.
+### Step 0.3 — ทดลองเรียก API โดยไม่ส่ง Token
 
-## Part A
+- ส่งคำขอโดยไม่ใส่ Authorization Header
+- API ตอบกลับ **HTTP 401**
+- ข้อความที่ได้รับคือ {"error":"authentication failed"}
 
-### Step A2 — observed error messages
+หมายความว่า API ไม่อนุญาตให้เรียกใช้งานคำขอนี้ หากไม่มี Token สำหรับยืนยันตัวตน
 
-The following messages were observed by running the invalid-input tests against QuickPizza:
+### Step 0.4 — ทดลองขอ Pizza มังสวิรัติ
 
-- C2 decimal stars: `json: cannot unmarshal number 3.5 into Go struct field Rating.stars of type int`
-- C2 text stars: `json: cannot unmarshal string into Go struct field Rating.stars of type int`
-- C2 missing stars field: `number of stars must be between 1 and 5 (inclusive)`
-- C3 unknown pizza: `pizza ID 999999999 not found`
-- C4 no Authorization header: `authentication failed`
-- C4 short / invalid token: `authentication failed`
+- ผลที่ได้ในรอบทดสอบนี้คือ **An Empty Calzone**
+- API เลือกชื่อ Pizza แบบสุ่ม ดังนั้นเมื่อทดลองใหม่อาจได้ชื่อไม่เหมือนเดิม
+- ผลการทดลองยืนยันว่า API ส่งข้อมูล Pizza กลับมาได้
 
-### Step A4 — status codes when another user reads, changes and deletes
+### Step 0.12 — ทดลองส่งคำขอโดยไม่ใช้ Session (Optional)
 
-- Read: **404**
-- Update: **400**
-- Delete: **400**
+**ไม่ได้ทำการทดลองในข้อนี้** เนื่องจากโจทย์ระบุว่าเป็นการทดลองเพิ่มเติม ไม่ใช่ส่วนบังคับของงาน
 
-Each operation was refused with a 4xx status. The owner could still read the rating afterwards, and the rating remained unchanged.
+### Step 0.16 — ทดลองตัดอุปกรณ์ที่ใช้ทำ Pizza
 
-## Part B
+โจทย์ให้ทดลองส่งรายการอุปกรณ์ที่ไม่ต้องการให้ระบบใช้ โดยมีอุปกรณ์ 3 ชนิด ได้แก่ Knife, Pizza cutter และ Scissors
 
-### 1. What can API tests find that unit tests with stubs cannot? Why write unit tests too?
+| จำนวนอุปกรณ์ที่ตัดออก | ตัวอย่างข้อมูลที่ส่ง | ผลที่พบ |
+|---|---|---|
+| 0 ชนิด | [] | API ตอบ HTTP 200 |
+| 1 ชนิด | ["Knife"] หรือ ["Scissors"] | API ตอบ HTTP 200 |
+| 2 ชนิด | ["Knife", "Scissors"] | API ตอบ HTTP 200 |
+| 3 ชนิด | ["Knife", "Pizza cutter", "Scissors"] | พบข้อผิดพลาด HTTP 500 |
 
-API tests can find integration failures such as a route or HTTP method being wired incorrectly, and authentication or cookies not being handled correctly by the real server. They also exercise the real request handling and stored data together. Unit tests with stubs replace neighbouring components, so they cannot prove that the real server and persistence layer work together. Unit tests are still valuable because they run quickly, isolate one function and make the source of a failure easier to locate.
+เมื่อเลือกตัดอุปกรณ์ 0, 1 หรือ 2 ชนิด ระบบยังสามารถสร้าง Pizza ได้ และไม่ใช้อุปกรณ์ที่เราระบุว่าห้ามใช้
 
-### 2. Why create a new user for each test instead of using the public token? How does this apply to Project 2?
+แต่เมื่อเลือกตัดอุปกรณ์ทั้ง 3 ชนิดพร้อมกัน ระบบเกิดข้อผิดพลาด ซึ่งอธิบายไว้ใน Defect Report ด้านล่าง
 
-Each test creates its own user so that the data belongs to that test and cannot interfere with another student's work. The public token is shared by everyone, so using it to create or change ratings could affect other students' data. In Project 2, the group should use its own shop or hotel account, create test records belonging to that group, and clean up only records that its own tests created. Group passwords and API keys must be read from environment variables, not committed to GitHub.
+## Defect Report — รายงานข้อผิดพลาดที่พบ
 
-### 3. Why send every request through one session? What happened in the optional experiment?
+**ชื่อปัญหา:** เมื่อเลือกไม่ใช้อุปกรณ์ทั้ง 3 ชนิด ระบบตอบกลับ HTTP 500 และไม่มีข้อความอธิบายข้อผิดพลาด
 
-A `requests.Session` keeps cookies between requests. QuickPizza sets an `AWSALB` cookie that helps the load balancer send requests to the same backend server. Keeping the cookie helps ensure that a user created on one server is logged in on that same server. Step 0.12 was optional and was not performed for this run.
+### รายละเอียดการทดสอบ
 
-### 4. Which excluded-tools block revealed the defect? Why is HTTP 500 with an empty body worse than HTTP 400 with a message? Why keep the test as xfail?
+- Method: POST
+- Endpoint: /api/pizza
+- Authorization: ใช้ Token ของผู้ใช้ทดสอบที่ Fixture สร้างขึ้น
+- ข้อมูล JSON ที่ส่ง:
 
-The block that excludes all three available tools revealed the defect. The API should return HTTP 400 and a JSON error because no pizza can satisfy the request. HTTP 500 with an empty body suggests an unexpected server failure and gives the calling application no useful explanation. The test remains marked xfail so the known defect stays visible without making the rest of the suite fail. With `strict=True`, the test will alert us if the API is fixed and it unexpectedly passes; the xfail marker should then be removed.
+~~~json
+{
+  "excludedTools": ["Knife", "Pizza cutter", "Scissors"]
+}
+~~~
 
-### 5. How many tests does base choice coverage need, and how many would all-combinations coverage need?
+### ผลลัพธ์ที่คาดหวัง (Expected Result)
 
-Base choice coverage needs **9 tests**:
+ระบบควรตอบกลับ **HTTP 400** พร้อมข้อความ Error ในรูปแบบ JSON เพื่ออธิบายว่าไม่สามารถสร้าง Pizza ตามเงื่อนไขที่ส่งมาได้ เพราะผู้ใช้เลือกตัดอุปกรณ์ทั้งหมดออก
 
-- 1 base test
-- 2 other blocks for C1
-- 3 other blocks for C2
-- 1 other block for C3
-- 2 other blocks for C4
+### ผลลัพธ์ที่เกิดขึ้นจริง (Actual Result)
 
-Total: `1 + 2 + 3 + 1 + 2 = 9`.
+ระบบตอบกลับ **HTTP 500** และไม่มีเนื้อหาใน Response Body
 
-All-combinations coverage needs `3 × 4 × 2 × 3 = 72` tests because C1 has 3 blocks, C2 has 4, C3 has 2 and C4 has 3.
+### ระดับความรุนแรง (Severity): Medium
 
-### 6. In Step A4, which status codes did the other user receive? Which codes would you expect? Is a difference a defect?
+ปัญหานี้จัดอยู่ในระดับปานกลาง เพราะคำขอที่ส่งมามีรูปแบบถูกต้อง แต่เงื่อนไขที่ผู้ใช้เลือกทำให้ระบบไม่สามารถสร้าง Pizza ได้
 
-The other user received **404** when reading, **400** when updating and **400** when deleting. I would expect all three operations to be refused consistently, commonly with 403 Forbidden or with 404 Not Found if the API intentionally hides the existence of another user's rating. All three observed responses are in the required 4xx range, and the owner could still read the unchanged rating afterwards, so the tests found no successful unauthorized read, update or delete. The different status codes are an API-consistency concern; whether they are a defect depends on the API's documented error contract.
+กรณีนี้ควรถูกแจ้งเป็นข้อผิดพลาดจากข้อมูลหรือเงื่อนไขที่ผู้ใช้ส่งมา (HTTP 400) ไม่ใช่ข้อผิดพลาดภายใน Server (HTTP 500) และควรมีข้อความอธิบายให้ผู้เรียก API เข้าใจด้วย
 
-### 7. What comes back when using the made-up token to read ratings? Is it a defect, and what could a stranger do with it on a real system?
+ในชุดทดสอบจึงเก็บกรณีนี้ไว้และกำหนดเป็น xfail เพื่อให้เห็นว่ายังมีข้อผิดพลาดที่รอแก้ไขอยู่ โดยไม่ทำให้ Test กรณีอื่นที่ผ่านแล้วถูกนับว่าล้มเหลว
 
-The read-only request using `Authorization: token 0000000000000000` returned **HTTP 200** and a JSON `ratings` list. This is an authentication defect because a made-up token was accepted for a protected read operation. On a real system, a stranger could potentially read rating records that should not be public. Only a GET request was made with this token; no data was created, changed or deleted with it.
+---
 
-### 8. What does an API test check better than a web-page test, and what can only a web-page test check?
+## Part A — ทดสอบ API ด้วย pytest
 
-An API test checks HTTP status codes, response headers and JSON fields directly and precisely. A web-page test can check what a person actually sees and uses, such as page layout, visible text, buttons, forms, navigation and whether an error message is displayed in the right place.
+### Step A2 — ข้อความ Error ที่พบจากการส่งข้อมูลไม่ถูกต้อง
 
-## Final report
+เมื่อทดลองส่งข้อมูลที่ไม่ตรงตามเงื่อนไขของ API พบข้อความตอบกลับดังนี้
 
-- Full test command: `pytest -v --html=report.html --self-contained-html`
-- Final result: **32 passed, 1 xfailed, 0 errors** (33 tests collected; Python 3.12.10, pytest 9.2.0; 10 November 2026).
-- HTML report: **Generated as a self-contained pytest-html report.** The generated file was checked for report content. Open `report.html` in a browser before submitting to review its test details.
+| กรณี | ข้อมูลที่ส่ง | ข้อความ Error ที่ API ตอบกลับ |
+|---|---|---|
+| C2 — ส่งดาวเป็นทศนิยม | 3.5 | json: cannot unmarshal number 3.5 into Go struct field Rating.stars of type int |
+| C2 — ส่งดาวเป็นข้อความ | "3" | json: cannot unmarshal string into Go struct field Rating.stars of type int |
+| C2 — ไม่ส่งฟิลด์ stars | ไม่มีฟิลด์ stars | number of stars must be between 1 and 5 (inclusive) |
+| C3 — ส่ง Pizza ID ที่ไม่มีอยู่ | 999999999 | pizza ID 999999999 not found |
+| C4 — ไม่ส่ง Authorization Header | ไม่มี Token | authentication failed |
+| C4 — ส่ง Token ที่ไม่ถูกต้อง | token short | authentication failed |
+
+ข้อความ Error ด้านบนคงไว้ตามที่ API ส่งกลับมาจริง เพื่อให้สามารถนำไปเปรียบเทียบกับผลการทดสอบได้โดยตรง
+
+### Step A4 — ตรวจสอบว่าผู้ใช้อื่นเข้าถึง Rating ของเจ้าของได้หรือไม่
+
+การทดลองนี้สร้าง Rating ด้วยบัญชีผู้ใช้คนแรก จากนั้นใช้บัญชีผู้ใช้อีกคนพยายามอ่าน แก้ไข และลบ Rating ดังกล่าว
+
+| การกระทำของผู้ใช้อื่น | HTTP Status ที่พบ | ผล |
+|---|---:|---|
+| อ่าน Rating (GET) | 404 | ระบบปฏิเสธ |
+| แก้ไข Rating (PUT) | 400 | ระบบปฏิเสธ |
+| ลบ Rating (DELETE) | 400 | ระบบปฏิเสธ |
+
+หลังจากผู้ใช้อื่นลองทำทั้ง 3 อย่างแล้ว ได้กลับไปใช้บัญชีเจ้าของตรวจสอบอีกครั้ง พบว่าเจ้าของยังอ่าน Rating ได้ตามปกติ และข้อมูลดาวยังเหมือนเดิม
+
+สรุปคือผู้ใช้อื่นไม่สามารถอ่าน แก้ไข หรือลบ Rating ของเจ้าของได้จากการทดลองครั้งนี้ แต่รหัส HTTP ที่ใช้ตอบกลับยังไม่เหมือนกันทุกคำขอ
+
+---
+
+## Part B — คำถามท้าย Lab
+
+### 1. API Test ตรวจพบอะไรได้บ้างที่ Unit Test ซึ่งใช้ Stub อาจตรวจไม่พบ? แล้วทำไมยังต้องเขียน Unit Test ด้วย?
+
+**คำตอบ:**
+
+API Test ช่วยตรวจสอบการทำงานของระบบที่เชื่อมต่อกันจริง เช่น การเรียก URL และ HTTP Method ว่าถูกต้องหรือไม่ การยืนยันตัวตนทำงานได้หรือไม่ การส่ง Cookie ถูกต้องหรือไม่ รวมถึงการรับส่งข้อมูลระหว่าง API กับระบบจัดเก็บข้อมูล
+
+ส่วน Unit Test ที่ใช้ Stub จะจำลองการทำงานของส่วนอื่นขึ้นมาแทน จึงช่วยทดสอบการทำงานของฟังก์ชันใดฟังก์ชันหนึ่งได้ แต่ไม่สามารถยืนยันได้ว่าระบบจริงทุกส่วนเชื่อมต่อและทำงานร่วมกันได้ถูกต้อง
+
+อย่างไรก็ตาม เรายังควรเขียน Unit Test เพราะทำงานได้รวดเร็ว ทดสอบปัญหาเฉพาะจุดได้ และช่วยให้หาสาเหตุของข้อผิดพลาดได้ง่ายขึ้น ดังนั้น Unit Test และ API Test จึงช่วยกันตรวจสอบระบบคนละด้าน
+
+### 2. ทำไมแต่ละ Test จึงควรสร้างผู้ใช้ใหม่ แทนการใช้ Public Token? และแนวคิดนี้นำไปใช้กับ Project 2 ได้อย่างไร?
+
+**คำตอบ:**
+
+การสร้างผู้ใช้ใหม่ให้แต่ละ Test ช่วยแยกข้อมูลของแต่ละการทดสอบออกจากกัน ทำให้ Test ไม่ไปแก้ไขหรือรบกวนข้อมูลของนักศึกษาคนอื่นที่ใช้ API เดียวกัน
+
+หากใช้ Public Token ร่วมกันในการสร้างหรือแก้ไข Rating อาจทำให้ข้อมูลของผู้ใช้อื่นถูกเปลี่ยนแปลงโดยไม่ตั้งใจ และทำให้ผลการทดสอบไม่น่าเชื่อถือ
+
+สำหรับ Project 2 กลุ่มควรใช้บัญชีร้านค้าหรือโรงแรมที่เป็นของกลุ่มตนเอง สร้างข้อมูลทดสอบภายใต้บัญชีนั้น และลบเฉพาะข้อมูลที่กลุ่มสร้างขึ้นเท่านั้น ส่วนรหัสผ่านและ API Key ควรเก็บไว้ใน Environment Variables ไม่ควรเขียนลงใน GitHub โดยตรง
+
+### 3. ทำไมจึงควรส่งทุก Request ผ่าน Session เดียวกัน? และการทดลองเพิ่มเติมพบอะไร?
+
+**คำตอบ:**
+
+requests.Session ช่วยเก็บ Cookie ที่ได้รับจาก Server ไว้ และส่ง Cookie เดิมกลับไปพร้อมกับ Request ครั้งถัดไป
+
+QuickPizza ใช้ Cookie ชื่อ AWSALB เพื่อช่วยให้ Load Balancer ส่ง Request ไปยัง Backend Server เครื่องเดิมอย่างต่อเนื่อง
+
+หากไม่ใช้ Session คำขอที่สร้างผู้ใช้อาจถูกส่งไปยัง Server หนึ่ง แต่คำขอ Login ถัดไปอาจไปถึงอีก Server หนึ่ง ทำให้เกิดปัญหาว่าระบบไม่พบผู้ใช้หรือข้อมูลที่เพิ่งสร้างขึ้น
+
+สำหรับ Step 0.12 ซึ่งเป็นการทดลองส่งคำขอโดยไม่ใช้ Session ไม่ได้ทำการทดลองในรอบนี้ เพราะเป็นส่วน Optional ของโจทย์
+
+### 4. การตัดอุปกรณ์ออกแบบใดที่ทำให้พบข้อผิดพลาด? ทำไม HTTP 500 ที่ไม่มีข้อความจึงแย่กว่า HTTP 400 ที่มีข้อความ? และทำไมต้องเก็บ Test นี้เป็น xfail?
+
+**คำตอบ:**
+
+พบข้อผิดพลาดเมื่อเลือกตัดอุปกรณ์ทั้ง 3 ชนิด ได้แก่ Knife, Pizza cutter และ Scissors ออกจากการสร้าง Pizza พร้อมกัน เพราะระบบไม่เหลืออุปกรณ์ให้ใช้
+
+สิ่งที่ควรเกิดขึ้นคือ API ตอบกลับ HTTP 400 พร้อมข้อความ JSON เพื่อแจ้งว่าคำขอไม่สามารถทำได้ แต่ผลที่พบจริงคือ HTTP 500 และไม่มีข้อความใน Response Body
+
+HTTP 500 ทำให้ผู้เรียก API เข้าใจได้ว่า Server เกิดข้อผิดพลาดภายใน ทั้งที่ปัญหาเกิดจากเงื่อนไขที่ผู้ใช้ส่งมา หาก API ตอบ HTTP 400 พร้อมคำอธิบาย จะช่วยให้ผู้พัฒนาโปรแกรมรู้ว่าต้องแก้ข้อมูลหรือเงื่อนไขที่ส่งไปอย่างไร
+
+จึงเก็บ Test นี้ไว้เป็น xfail เพื่อบันทึกว่าปัญหานี้ยังมีอยู่ และไม่ให้กรณีที่ทราบข้อผิดพลาดแล้วทำให้ Test ทั้งชุดถูกนับว่าล้มเหลว
+
+ใน Test ใช้ strict=True ด้วย หากวันหนึ่ง API ถูกแก้ไขแล้ว Test นี้กลับมาผ่านโดยไม่คาดคิด pytest จะรายงานให้ทราบ จากนั้นจึงควรนำเครื่องหมาย xfail ออก
+
+### 5. Base Choice Coverage ต้องใช้กี่ Test และถ้าทดสอบทุกชุดข้อมูลต้องใช้กี่ Test?
+
+**คำตอบ:**
+
+Base Choice Coverage ใช้ทั้งหมด **9 Tests** โดยเริ่มจากชุดข้อมูลปกติ 1 ชุด แล้วเปลี่ยนข้อมูลทีละคุณลักษณะ
+
+- ชุดพื้นฐาน 1 Test
+- C1 เพิ่ม 2 Test
+- C2 เพิ่ม 3 Test
+- C3 เพิ่ม 1 Test
+- C4 เพิ่ม 2 Test
+
+รวมเป็น 1 + 2 + 3 + 1 + 2 = **9 Tests**
+
+หากทดสอบทุกชุดความเป็นไปได้ (All-Combinations Coverage) ต้องนำจำนวนกลุ่มของแต่ละคุณลักษณะมาคูณกัน ได้แก่
+
+**3 × 4 × 2 × 3 = 72 Tests**
+
+ดังนั้น Base Choice Coverage ใช้จำนวน Test น้อยกว่า แต่ยังสามารถตรวจสอบแต่ละคุณลักษณะได้อย่างเป็นระบบ
+
+### 6. ใน Step A4 ผู้ใช้อื่นได้รับ HTTP Status Code อะไร? ควรคาดหวังรหัสใด? การตอบกลับไม่เหมือนกันถือเป็นข้อผิดพลาดหรือไม่?
+
+**คำตอบ:**
+
+ผลที่พบจากการทดลองคือ
+
+- อ่าน Rating ได้ HTTP 404
+- แก้ไข Rating ได้ HTTP 400
+- ลบ Rating ได้ HTTP 400
+
+สิ่งที่คาดหวังคือทั้ง 3 คำขอต้องถูกปฏิเสธ เพราะผู้ใช้ไม่มีสิทธิ์จัดการ Rating ของคนอื่น โดยทั่วไปอาจใช้ HTTP 403 (Forbidden) เพื่อบอกว่าไม่มีสิทธิ์ หรือ HTTP 404 (Not Found) หากระบบต้องการซ่อนว่าข้อมูลนั้นมีอยู่จริง
+
+จากผลที่ทดลอง ทั้ง 3 คำขอได้รับรหัสในกลุ่ม 4xx และเจ้าของยังสามารถอ่าน Rating เดิมได้หลังจากการทดลอง จึงยังไม่พบว่าผู้ใช้อื่นสามารถอ่าน แก้ไข หรือลบข้อมูลได้สำเร็จ
+
+อย่างไรก็ตาม การตอบกลับด้วยรหัสที่ต่างกันเป็นเรื่องที่ควรปรับให้สม่ำเสมอมากขึ้น ส่วนจะถือเป็นข้อผิดพลาดหรือไม่ ต้องพิจารณาตามข้อกำหนดการตอบกลับของ API ด้วย
+
+### 7. เมื่อใช้ Token สมมติเพื่ออ่าน Rating ได้ผลอย่างไร? ถือเป็นข้อผิดพลาดหรือไม่? หากเป็นระบบจริงจะมีความเสี่ยงอะไร?
+
+**คำตอบ:**
+
+เมื่อส่งคำขอ GET เพื่ออ่าน Rating โดยใช้ Token สมมติในไฟล์ madeup.txt คือ token 0000000000000000 พบว่า API ตอบกลับ **HTTP 200** และส่งข้อมูลรายการ Rating กลับมา
+
+ผลนี้ถือเป็นปัญหาด้านการยืนยันตัวตน (Authentication) เพราะ Token ที่สร้างขึ้นมาเองและไม่ควรได้รับอนุญาต กลับสามารถใช้เรียกดูข้อมูลได้
+
+หากเกิดปัญหาแบบนี้ในระบบจริง บุคคลที่ไม่มีสิทธิ์อาจสามารถอ่านข้อมูลที่ควรจำกัดให้เฉพาะผู้ใช้ที่เข้าสู่ระบบแล้วได้ ซึ่งเป็นความเสี่ยงด้านความปลอดภัยและความเป็นส่วนตัวของข้อมูล
+
+ในการทดลองครั้งนี้ใช้ Token ดังกล่าวเพื่ออ่านข้อมูลด้วย GET เท่านั้น ไม่ได้ใช้สร้าง แก้ไข หรือลบข้อมูลใด ๆ
+
+### 8. API Test ตรวจสอบอะไรได้ดีกว่าการทดสอบหน้าเว็บไซต์ และมีอะไรที่ต้องใช้ Web-page Test เท่านั้น?
+
+**คำตอบ:**
+
+API Test เหมาะกับการตรวจสอบการทำงานของ API โดยตรง เช่น HTTP Status Code, Header, ข้อมูล JSON และค่าที่ระบบส่งกลับมา ทำให้ตรวจสอบข้อมูลได้อย่างชัดเจนและแม่นยำ
+
+ส่วน Web-page Test เหมาะกับการตรวจสอบสิ่งที่ผู้ใช้งานมองเห็นและกดใช้งานจริง เช่น การจัดวางหน้าเว็บ ข้อความ ปุ่ม แบบฟอร์ม การเปลี่ยนหน้า และการแสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด
+
+ดังนั้น API Test จะเน้นตรวจสอบการทำงานและข้อมูลที่รับส่งกัน ส่วน Web-page Test จะเน้นตรวจสอบประสบการณ์การใช้งานผ่านหน้าเว็บไซต์
+
+---
+
+## สรุปผลการทดสอบรอบสุดท้าย
+
+**คำสั่งที่ใช้รันทดสอบและสร้างรายงาน**
+
+~~~bash
+pytest -v --html=report.html --self-contained-html
+~~~
+
+| รายการ | ผลการทดสอบ |
+|---|---:|
+| จำนวน Test ที่เก็บได้ทั้งหมด | 33 |
+| ผ่าน (Passed) | 32 |
+| ไม่ผ่านตามที่คาดไว้ (XFailed) | 1 |
+| Error ที่ไม่คาดคิด | 0 |
+
+**สภาพแวดล้อมที่ใช้ทดสอบ**
+
+- Python 3.12.10
+- pytest 9.2.0
+- pytest-html 4.2.0
+- วันที่ทดสอบ 10 พฤศจิกายน 2026
+
+**รายงาน HTML:** สร้างไฟล์ report.html แบบรวมทุกอย่างไว้ในไฟล์เดียวแล้ว สามารถเปิดด้วยเว็บเบราว์เซอร์เพื่อตรวจดูรายละเอียดผลทดสอบแต่ละรายการได้
