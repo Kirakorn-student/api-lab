@@ -1,162 +1,226 @@
-# API Lab — pytest and requests
+# คู่มือโปรเจกต์ API Lab (pytest และ requests)
 
-**Course:** ITDS362 — Software Quality Assurance and Testing  
-**Lab:** API Testing with pytest and requests  
-**Target API:** [QuickPizza](https://quickpizza.grafana.com)  
-**Python:** 3.10 or newer
+**รายวิชา:** ITDS362 — Software Quality Assurance and Testing  
+**งาน:** W10 — API Testing with pytest and requests  
+**API ที่ใช้ทดสอบ:** [QuickPizza](https://quickpizza.grafana.com)  
+**เวอร์ชัน Python:** 3.10 ขึ้นไป
 
-This repository contains the API-testing exercise from the W10 lab. The tests send real HTTP requests to QuickPizza. They are integration tests: they exercise the API server, request handling, authentication and stored data together.
+## โปรเจกต์นี้ทำอะไร?
 
-## 1. Requirements
+โปรเจกต์นี้เป็นงานทดสอบ API จาก Lab สัปดาห์ที่ 10 โดยใช้ Python ร่วมกับ pytest และ requests เพื่อส่งคำขอ (HTTP Request) ไปยัง QuickPizza แล้วตรวจสอบผลลัพธ์ที่ API ตอบกลับมา เช่น สถานะ HTTP ข้อมูล JSON และการทำงานเกี่ยวกับผู้ใช้ Pizza และ Rating
 
-Install or prepare:
+การทดสอบในชุดนี้เป็นการทดสอบระบบที่เชื่อมต่อกันจริง (Integration Test) ไม่ได้จำลอง API ขึ้นมาเอง จึงช่วยตรวจสอบได้ว่าการส่งคำขอ การเข้าสู่ระบบ และการจัดเก็บข้อมูลทำงานร่วมกันได้หรือไม่
 
-- Python 3.10+
+## 1. สิ่งที่ต้องเตรียมก่อนเริ่ม
+
+ติดตั้งหรือเตรียมโปรแกรมต่อไปนี้ให้พร้อม
+
+- Python เวอร์ชัน 3.10 ขึ้นไป
 - Git
-- curl
-- Visual Studio Code or another editor with a terminal
-- A GitHub repository named `api-lab` (Public, as required by the lab)
+- curl สำหรับส่ง HTTP Request จาก Terminal
+- Visual Studio Code หรือโปรแกรมเขียนโค้ดที่มี Terminal
+- GitHub Repository ชื่อ api-lab และตั้งค่าเป็น Public ตามข้อกำหนดของ Lab
 
-The repository should be cloned to a normal local folder, not inside OneDrive, iCloud Drive or Google Drive.
+แนะนำให้เก็บโฟลเดอร์โปรเจกต์ไว้ในโฟลเดอร์ทั่วไปบนเครื่อง ไม่ควรวางไว้ใน OneDrive, iCloud Drive หรือ Google Drive ระหว่างทำงาน เพื่อลดปัญหาการซิงก์ไฟล์หรือไฟล์ถูกล็อก
 
-## 2. Set up the project
+## 2. วิธีติดตั้งและเตรียมโปรเจกต์
 
-### Windows PowerShell
+### Windows (PowerShell)
 
-Open PowerShell in the repository folder:
+เปิด PowerShell แล้วเข้าไปยังโฟลเดอร์โปรเจกต์ จากนั้นรันคำสั่งทีละบรรทัด
 
-```powershell
+~~~powershell
 python -m venv .venv
-.venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 curl.exe --version
-```
+~~~
 
-If PowerShell blocks activation, run this once:
+คำอธิบายคำสั่ง
 
-```powershell
+1. สร้าง Virtual Environment ชื่อ .venv เพื่อแยกไลบรารีของโปรเจกต์นี้ออกจาก Python ส่วนกลางของเครื่อง
+2. เปิดใช้งาน Virtual Environment
+3. ติดตั้งไลบรารีที่ระบุไว้ใน requirements.txt
+4. ตรวจสอบว่าเครื่องมี curl พร้อมใช้งาน
+
+หาก PowerShell แจ้งว่าไม่อนุญาตให้เปิดใช้งานสคริปต์ ให้รันคำสั่งนี้หนึ่งครั้ง
+
+~~~powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
+~~~
 
-Then activate the environment again.
+จากนั้นลองเปิดใช้งาน Virtual Environment อีกครั้ง
 
 ### macOS / Linux
 
-```bash
+เปิด Terminal ในโฟลเดอร์โปรเจกต์ แล้วรันคำสั่งต่อไปนี้
+
+~~~bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 curl --version
-```
+~~~
 
-## 3. Run the tests
+## 3. วิธีรันทดสอบ
 
-Run the complete test suite:
+### รันทดสอบทั้งหมด
 
-```bash
+~~~bash
 pytest -v
-```
+~~~
 
-The lab's expected final result is **32 passed, 1 xfailed**. The xfailed test records the known defect in the "exclude all tools" case. Because this suite calls a shared public demo API, the actual result can change if the service changes or is temporarily unavailable.
+คำสั่งนี้จะรันทดสอบทุกไฟล์ที่ชื่อขึ้นต้นด้วย test_ และแสดงผลของแต่ละ Test ใน Terminal
 
-Run one test by itself:
+ผลการทดสอบรอบสุดท้ายที่บันทึกไว้ในโปรเจกต์นี้คือ
 
-```bash
+- **32 passed** — ผ่านการทดสอบ 32 รายการ
+- **1 xfailed** — มี 1 รายการที่ถูกระบุไว้ล่วงหน้าว่าคาดว่าจะไม่ผ่าน เพราะเป็นข้อผิดพลาดที่พบใน API อยู่แล้ว
+- **0 errors** — ไม่มีข้อผิดพลาดระหว่างการเตรียมหรือเรียกใช้ชุดทดสอบ
+
+รายการ xfailed คือกรณีที่ API ไม่สามารถสร้าง Pizza ได้เมื่อผู้ใช้เลือกตัดอุปกรณ์ทั้ง 3 ชนิดออกพร้อมกัน รายละเอียดอยู่ในหัวข้อ Defect Report ของไฟล์ RESULTS.md
+
+หมายเหตุ: ชุดทดสอบนี้เรียกใช้ API สาธารณะของ QuickPizza ซึ่งเป็นระบบที่นักศึกษาหลายคนใช้งานร่วมกัน ผลการทดสอบในอนาคตอาจเปลี่ยนได้ หากผู้ดูแลปรับ API หรือระบบไม่พร้อมให้บริการ
+
+### รันทดสอบเฉพาะรายการ
+
+ตัวอย่างคำสั่งสำหรับรันทดสอบการลบ Rating เพียงรายการเดียว
+
+~~~bash
 pytest -v test_ratings.py::test_delete_rating
-```
+~~~
 
-Generate the required self-contained HTML report after completing the live run:
+### สร้างรายงานผลทดสอบ HTML
 
-```bash
+หลังจากรันทดสอบเสร็จ สามารถสร้างรายงาน HTML ที่เปิดดูได้ด้วยเว็บเบราว์เซอร์ โดยใช้คำสั่ง
+
+~~~bash
 pytest -v --html=report.html --self-contained-html
-```
+~~~
 
-Open `report.html` in a browser and check the results before committing it. The report included in this repository was generated from the final full run on **10 November 2026** with Python 3.12.10, pytest 9.2.0 and pytest-html 4.2.0. It contains **32 passed, 1 xfailed and 0 errors**. If the tests change, regenerate the report before submission.
+ไฟล์ report.html ที่อยู่ใน Repository นี้สร้างจากการรันทดสอบเต็มรอบสุดท้ายเมื่อวันที่ **10 พฤศจิกายน 2026** โดยใช้ Python 3.12.10, pytest 9.2.0 และ pytest-html 4.2.0 ผลคือ 32 passed, 1 xfailed และ 0 errors
 
-## 4. Files
+หากมีการแก้ไข Test หรือรันทดสอบใหม่ ควรสร้าง report.html ใหม่ แล้วเปิดตรวจสอบรายงานก่อนส่งงาน
 
-| File | Purpose |
+## 4. รายชื่อไฟล์และหน้าที่
+
+| ไฟล์ | ใช้ทำอะไร |
 |---|---|
-| `conftest.py` | Shared QuickPizza session and fixtures for users, pizzas and ratings |
-| `test_names.py` | Read the pizza-name list |
-| `test_tools.py` | Read the available tools using the lab's public practice token |
-| `test_pizza.py` | Vegetarian pizza response and missing-token refusal |
-| `test_users.py` | Create/log in a new user and check the empty ratings list |
-| `test_ratings.py` | Create, read, update and delete a rating |
-| `test_refused.py` | Duplicate username, wrong password and empty username |
-| `test_excluded_tools.py` | Input partitioning for excluded tools and the known defect |
-| `test_create_rating.py` | Base choice coverage for `POST /api/ratings` |
-| `test_update_rating.py` | Boundary values for `PUT /api/ratings/{id}` |
-| `test_rating_owner.py` | Check that a different user cannot read, change or delete a rating |
-| `auth.txt` | Public practice header used by the curl steps |
-| `veg.json` | Vegetarian pizza request body for curl |
-| `madeup.txt` | Made-up token for the read-only check in Part B |
-| `RESULTS.md` | Live observations, defect report and reflection answers |
-| `report.html` | Self-contained pytest-html report from the final full test run |
+| .gitignore | ระบุไฟล์หรือโฟลเดอร์ที่ไม่ต้องการให้ Git นำขึ้น Repository เช่น .venv และ Cache |
+| README.md | คู่มืออธิบายโปรเจกต์ วิธีติดตั้ง วิธีรัน และหน้าที่ของไฟล์ |
+| RESULTS.md | บันทึกผลทดสอบ สิ่งที่พบ และคำตอบคำถามท้าย Lab |
+| requirements.txt | รายชื่อไลบรารี Python ที่ต้องติดตั้ง |
+| conftest.py | เก็บ Fixture ที่ใช้ร่วมกัน เช่น การสร้างผู้ใช้ การเข้าสู่ระบบ และการสร้างข้อมูลทดสอบ |
+| auth.txt | Header สำหรับ Token สาธารณะที่ใช้ในขั้นตอนทดลอง curl ตามโจทย์ |
+| madeup.txt | Header ที่ใช้ Token สมมติสำหรับการทดสอบอ่านข้อมูลใน Part B เท่านั้น |
+| veg.json | ตัวอย่างข้อมูล JSON สำหรับขอ Pizza แบบมังสวิรัติด้วย curl |
+| report.html | รายงานผลการทดสอบที่สร้างจาก pytest-html |
+| test_names.py | ทดสอบการเรียกดูรายชื่อ Pizza |
+| test_tools.py | ทดสอบการเรียกดูรายชื่ออุปกรณ์ที่ใช้ทำ Pizza |
+| test_pizza.py | ทดสอบการขอ Pizza แบบมังสวิรัติและการส่งคำขอโดยไม่มี Token |
+| test_users.py | ทดสอบการสร้างผู้ใช้ เข้าสู่ระบบ และตรวจสอบรายการ Rating |
+| test_ratings.py | ทดสอบการสร้าง อ่าน แก้ไข และลบ Rating |
+| test_refused.py | ทดสอบกรณีระบบปฏิเสธ เช่น ชื่อผู้ใช้ซ้ำ รหัสผ่านผิด และชื่อผู้ใช้ว่าง |
+| test_excluded_tools.py | ทดสอบการตัดอุปกรณ์ออกจากการทำ Pizza รวมถึงกรณีที่พบข้อผิดพลาด |
+| test_create_rating.py | ทดสอบการสร้าง Rating โดยใช้แนวคิด Base Choice Coverage |
+| test_update_rating.py | ทดสอบค่าขอบเขตของจำนวนดาวเมื่อต้องแก้ไข Rating |
+| test_rating_owner.py | ตรวจสอบว่าผู้ใช้อื่นไม่สามารถอ่าน แก้ไข หรือลบ Rating ของเจ้าของได้ |
 
-## 5. Important test-design decisions
+## 5. แนวคิดสำคัญในการออกแบบ Test
 
-### Independent test data
+### 5.1 แยกข้อมูลของแต่ละ Test ออกจากกัน
 
-Each test that works with ratings receives a fresh user through the `auth` fixture. The user name is generated with `uuid`, then the test logs in and uses the token returned by QuickPizza.
+ใน Test ที่เกี่ยวข้องกับ Rating ระบบจะสร้างผู้ใช้ใหม่ให้แต่ละ Test ผ่าน Fixture ชื่อ auth โดยสร้างชื่อผู้ใช้แบบสุ่มด้วย uuid แล้วจึงเข้าสู่ระบบเพื่อรับ Token ของผู้ใช้นั้นมาใช้ทดสอบ
 
-The `api` fixture creates one `requests.Session` for the whole pytest run. It keeps the `AWSALB` cookie, which helps the load balancer route requests to the same backend server. This avoids the flaky create-user / login sequence described in Step 0.12.
+วิธีนี้ช่วยลดปัญหาข้อมูลของ Test หนึ่งไปกระทบอีก Test หนึ่ง และไม่ต้องใช้บัญชีหรือ Token สาธารณะในการสร้างหรือแก้ไข Rating
 
-The `pizza_id` fixture creates a pizza for the current test user. The `rating` fixture creates a 3-star rating and deletes it after the test, including when the test fails. Tests that create a rating directly also delete that rating after checking the response.
+### 5.2 ใช้ requests.Session ร่วมกัน
 
-### Input domain model — `POST /api/ratings`
+Fixture ชื่อ api จะสร้าง requests.Session หนึ่งชุดเพื่อให้ Test ใช้ร่วมกันตลอดการรันทดสอบ Session จะเก็บ Cookie ที่ได้รับจาก API ไว้และส่งกลับไปพร้อมคำขอครั้งต่อไป
 
-The table below follows Step A1 of the lab. Base choice uses the common valid input for each characteristic.
+QuickPizza ใช้ Cookie ชื่อ AWSALB ซึ่งช่วยให้ Load Balancer ส่งคำขอไปยัง Backend Server เดิมได้อย่างต่อเนื่อง จึงช่วยลดปัญหาการสร้างผู้ใช้บน Server หนึ่ง แต่ไปเข้าสู่ระบบอีก Server หนึ่ง
 
-| Characteristic | Blocks | Test values | Test coverage |
-|---|---|---|---|
-| C1 — Value of stars | below 1 / 1 to 5 (base) / above 5 | 0 / 3 / 6 | `test_stars_out_of_range`, `test_base_choice_is_saved` |
-| C2 — Type of stars | whole number (base) / decimal / text / missing | 3 / 3.5 / `"3"` / no field | `test_base_choice_is_saved`, `test_stars_must_be_a_whole_number` |
-| C3 — Pizza | exists (base) / does not exist | a newly created pizza / `999999999` | `test_base_choice_is_saved`, `test_rating_with_unknown_pizza_is_refused` |
-| C4 — Token | user's own (base) / none / wrong token | `auth` / no header / `token short` | `test_base_choice_is_saved`, `test_rating_without_token_is_refused`, `test_rating_with_short_token_is_refused` |
+### 5.3 Fixture สำหรับสร้าง Pizza และ Rating
 
-**Base choice test count:** 1 base test + 2 other C1 blocks + 3 other C2 blocks + 1 other C3 block + 2 other C4 blocks = **9 tests**.
+- **pizza_id:** สร้าง Pizza สำหรับผู้ใช้ที่กำลังทดสอบ แล้วส่งคืน ID ของ Pizza
+- **rating:** สร้าง Rating เริ่มต้น 3 ดาวก่อนเริ่ม Test และลบข้อมูลทดสอบหลังจบ Test
+- Test ที่สร้าง Rating เองโดยตรงจะลบ Rating ที่สร้างขึ้นหลังตรวจสอบผลเสร็จด้วย
 
-**All combinations:** 3 × 4 × 2 × 3 = **72 combinations**.
+การลบข้อมูลทดสอบช่วยไม่ให้ข้อมูลสะสมบน API สาธารณะ
 
-### Boundary values — update rating
+### 5.4 การแบ่งกลุ่มข้อมูลสำหรับ POST /api/ratings
 
-`test_update_rating.py` checks 0, 1, 5 and 6. The accepted values 1 and 5 must be saved with status 200. The rejected values 0 and 6 must return 400 and must not change the original rating.
+โจทย์ให้แบ่งข้อมูลทดสอบออกเป็น 4 คุณลักษณะ (Characteristics) ดังนี้
 
-### Ownership
+| คุณลักษณะ | กลุ่มข้อมูลที่ทดสอบ | ตัวอย่าง |
+|---|---|---|
+| C1 — จำนวนดาว | น้อยกว่า 1 / ค่าปกติ 1–5 / มากกว่า 5 | 0 / 3 / 6 |
+| C2 — ชนิดข้อมูลของดาว | จำนวนเต็ม / ทศนิยม / ข้อความ / ไม่ส่งค่า | 3 / 3.5 / "3" / ไม่มีฟิลด์ stars |
+| C3 — Pizza | Pizza มีอยู่จริง / ไม่พบ Pizza | Pizza ที่สร้างใหม่ / 999999999 |
+| C4 — Token | Token ของผู้ใช้ / ไม่ส่ง Token / Token ไม่ถูกต้อง | Token จากการ Login / ไม่มี Header / token short |
 
-`test_rating_owner.py` creates a rating as one user and attempts to read, update and delete it as another user. Each attempt must be refused with a 4xx status. The test then reads the rating as its owner to verify that it remains unchanged. The observed status codes are recorded in `RESULTS.md`.
+**Base Choice Coverage** คือการเลือกค่าปกติของทุกคุณลักษณะมาเป็นชุดพื้นฐานก่อน จากนั้นเปลี่ยนทีละคุณลักษณะเพื่อทดสอบค่ากรณีอื่น โดยคงคุณลักษณะที่เหลือไว้เป็นค่าปกติ
 
-## 6. QuickPizza safety rules
+จำนวน Test ที่ต้องใช้ตามแนวคิดนี้คือ
 
-QuickPizza is shared by students:
+- ชุดพื้นฐาน 1 Test
+- C1 เพิ่มอีก 2 กรณี
+- C2 เพิ่มอีก 3 กรณี
+- C3 เพิ่มอีก 1 กรณี
+- C4 เพิ่มอีก 2 กรณี
 
-- Create, change and delete only data created by your own tests.
-- Never use the public token `abcdef0123456789` to create or change ratings.
-- The public token in `auth.txt` is used only for the introductory practice requests in the lab; rating tests use a token obtained by logging in as a newly created test user.
-- Use made-up usernames and passwords only. The fixture uses names such as `lab-<random-hex>` and the practice password `Pizza-2026`.
-- `madeup.txt` is for the Part B read-only request only. Do not create, update or delete anything with that token.
-- A full test run sends many requests. Run it when needed, not in a loop.
+รวมทั้งหมด **1 + 2 + 3 + 1 + 2 = 9 Tests**
 
-## 7. Manual observations
+หากทดสอบทุกความเป็นไปได้พร้อมกัน (All-Combinations Coverage) จะมีจำนวน **3 × 4 × 2 × 3 = 72 กรณี**
 
-The live observations, exact validation messages, ownership status codes, made-up-token result and defect report are recorded in `RESULTS.md`. Step 0.12 is optional and was not performed for the recorded run. The vegetarian pizza name is random and may differ on another run.
+### 5.5 ทดสอบค่าขอบเขต (Boundary Value)
 
-## 8. Git workflow
+ไฟล์ test_update_rating.py ตรวจสอบจำนวนดาว 4 ค่า ได้แก่ 0, 1, 5 และ 6
 
-After each meaningful step, commit and push:
+- ค่า 1 และ 5 เป็นค่าขอบเขตที่ถูกต้อง ระบบควรบันทึกได้และตอบกลับ HTTP 200
+- ค่า 0 และ 6 อยู่นอกช่วงที่กำหนด ระบบควรปฏิเสธและตอบกลับ HTTP 400
+- เมื่อส่งค่าที่ไม่ถูกต้อง ค่า Rating เดิมต้องไม่เปลี่ยนแปลง
 
-```bash
+### 5.6 ตรวจสอบสิทธิ์เจ้าของข้อมูล
+
+ไฟล์ test_rating_owner.py สร้าง Rating ด้วยผู้ใช้คนหนึ่ง แล้วใช้บัญชีของผู้ใช้อีกคนพยายามอ่าน แก้ไข และลบ Rating นั้น
+
+ระบบต้องปฏิเสธทุกคำขอด้วย HTTP สถานะในกลุ่ม 4xx จากนั้น Test จะกลับไปตรวจด้วยบัญชีเจ้าของ เพื่อยืนยันว่า Rating ยังอ่านได้และข้อมูลไม่ถูกเปลี่ยนแปลง
+
+ผลรหัสสถานะที่พบจริงบันทึกไว้ใน RESULTS.md
+
+## 6. ข้อควรระวังในการทดสอบ QuickPizza
+
+QuickPizza เป็น API สาธารณะที่นักศึกษาหลายคนใช้ร่วมกัน จึงควรระวังเรื่องข้อมูลของผู้อื่น
+
+- สร้าง แก้ไข หรือลบเฉพาะข้อมูลที่ Test ของเราเป็นผู้สร้างเท่านั้น
+- ห้ามใช้ Token สาธารณะ abcdef0123456789 เพื่อสร้างหรือแก้ไข Rating
+- ไฟล์ auth.txt ใช้สำหรับคำขอทดลองเบื้องต้นตามโจทย์เท่านั้น ส่วน Test เกี่ยวกับ Rating จะสร้างผู้ใช้ใหม่และใช้ Token ที่ได้จากการ Login
+- ใช้ชื่อผู้ใช้และรหัสผ่านสำหรับการทดสอบเท่านั้น Fixture จะสร้างชื่อในรูปแบบ lab- ตามด้วยตัวอักษรสุ่ม และใช้รหัสผ่านทดสอบ Pizza-2026
+- ไฟล์ madeup.txt ใช้สำหรับคำขอ GET เพื่ออ่านข้อมูลใน Part B เท่านั้น ห้ามใช้ Token นี้สร้าง แก้ไข หรือลบข้อมูล
+- การรันทดสอบทั้งหมดจะส่งคำขอจำนวนมากไปยัง API ควรรันเมื่อจำเป็น ไม่ควรรันวนซ้ำโดยไม่จำเป็น
+
+## 7. ผลการทดลองเพิ่มเติม
+
+ผลที่สังเกตได้จากการเรียก API จริง ข้อความ Error ที่ได้รับ รหัสสถานะของการตรวจสอบเจ้าของข้อมูล ผลการใช้ Token สมมติ และรายละเอียดข้อผิดพลาดของระบบ สรุปไว้ในไฟล์ RESULTS.md
+
+Step 0.12 เป็นการทดลองเพิ่มเติมที่โจทย์ระบุว่าเป็นทางเลือก จึงไม่ได้ทำในการบันทึกผลรอบนี้ ส่วนชื่อ Pizza มังสวิรัติอาจเปลี่ยนได้ในแต่ละครั้ง เพราะ API สุ่มผลลัพธ์
+
+## 8. คำสั่ง Git สำหรับส่งงาน
+
+เมื่อแก้ไขไฟล์และต้องการบันทึกขึ้น GitHub ให้ใช้คำสั่งต่อไปนี้ใน Terminal
+
+~~~bash
 git add .
 git commit -m "Complete API lab tests"
 git push
-```
+~~~
 
-If Git has no identity configured yet:
+หากยังไม่ได้ตั้งค่าชื่อและอีเมลสำหรับ Commit ให้ตั้งค่าก่อน โดยเปลี่ยนเป็นข้อมูลของตนเอง
 
-```bash
+~~~bash
 git config --global user.name "Your Name"
 git config --global user.email "your-email@example.com"
-```
+~~~
 
-Do not put real passwords, private API keys or group credentials in the repository.
+**ข้อควรจำ:** ห้ามนำรหัสผ่านจริง API Key ส่วนตัว หรือข้อมูลลับของกลุ่มใส่ไว้ใน Repository สาธารณะ
