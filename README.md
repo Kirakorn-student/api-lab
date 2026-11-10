@@ -152,12 +152,12 @@ QuickPizza ใช้ Cookie ชื่อ AWSALB ซึ่งช่วยให�
 
 โจทย์ให้แบ่งข้อมูลทดสอบออกเป็น 4 คุณลักษณะ (Characteristics) ดังนี้
 
-| คุณลักษณะ | กลุ่มข้อมูลที่ทดสอบ | ตัวอย่าง |
-|---|---|---|
-| C1 — จำนวนดาว | น้อยกว่า 1 / ค่าปกติ 1–5 / มากกว่า 5 | 0 / 3 / 6 |
-| C2 — ชนิดข้อมูลของดาว | จำนวนเต็ม / ทศนิยม / ข้อความ / ไม่ส่งค่า | 3 / 3.5 / "3" / ไม่มีฟิลด์ stars |
-| C3 — Pizza | Pizza มีอยู่จริง / ไม่พบ Pizza | Pizza ที่สร้างใหม่ / 999999999 |
-| C4 — Token | Token ของผู้ใช้ / ไม่ส่ง Token / Token ไม่ถูกต้อง | Token จากการ Login / ไม่มี Header / token short |
+| คุณลักษณะ | กลุ่มข้อมูลที่ทดสอบ | ตัวอย่าง | Test ที่ครอบคลุม |
+|---|---|---|---|
+| C1 — จำนวนดาว | น้อยกว่า 1 / ค่าปกติ 1–5 / มากกว่า 5 | 0 / 3 / 6 | `test_stars_out_of_range` / `test_base_choice_is_saved` / `test_stars_out_of_range` |
+| C2 — ชนิดข้อมูลของดาว | จำนวนเต็ม / ทศนิยม / ข้อความ / ไม่ส่งค่า | 3 / 3.5 / "3" / ไม่มีฟิลด์ stars | `test_base_choice_is_saved` / `test_stars_must_be_a_whole_number` |
+| C3 — Pizza | Pizza มีอยู่จริง / ไม่พบ Pizza | Pizza ที่สร้างใหม่ / 999999999 | `test_base_choice_is_saved` / `test_rating_with_unknown_pizza_is_refused` |
+| C4 — Token | Token ของผู้ใช้ / ไม่ส่ง Token / Token ไม่ถูกต้อง | Token จากการ Login / ไม่มี Header / token short | `test_base_choice_is_saved` / `test_rating_without_token_is_refused` / `test_rating_with_short_token_is_refused` |
 
 **Base Choice Coverage** คือการเลือกค่าปกติของทุกคุณลักษณะมาเป็นชุดพื้นฐานก่อน จากนั้นเปลี่ยนทีละคุณลักษณะเพื่อทดสอบค่ากรณีอื่น โดยคงคุณลักษณะที่เหลือไว้เป็นค่าปกติ
 
